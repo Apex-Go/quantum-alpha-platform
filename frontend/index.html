@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Alpha Full-Stack — Python + LightGBM Trading & Backtest</title>
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root {
+      --bg: #070B12;
+      --surface: #101724;
+      --surface-2: #182336;
+      --border: #25344D;
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --cyan: #06B6D4;
+      --green: #10B981;
+      --red: #EF4444;
+      --amber: #F59E0B;
+      --purple: #8B5CF6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 40px; }
+    header {
+      background: rgba(16, 23, 36, 0.96);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .badge {
+      background: linear-gradient(135deg, var(--purple), var(--cyan));
+      color: #fff;
+      font-weight: 800;
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    .brand h1 { font-size: 16px; font-weight: 800; }
+    .brand small { color: var(--muted); font-size: 11px; display: block; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    select, button, input {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 7px 11px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    input { width: 82px; text-align: center; font-family: monospace; }
+    button { cursor: pointer; transition: 0.15s; }
+    button:hover { border-color: var(--cyan); }
+    button.primary { background: var(--cyan); color: #070B12; border-color: var(--cyan); }
+
+    .container { max-width: 1380px; margin: 16px auto; padding: 0 16px; display: grid; gap: 14px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 10px; }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .kpi small { color: var(--muted); font-size: 11px; display: block; margin-bottom: 4px; }
+    .kpi strong { font-family: monospace; font-size: 16px; }
+
+    .main-grid { display: grid; grid-template-columns: 1fr 410px; gap: 14px; }
+    @media (max-width: 1020px) { .main-grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .card-title { font-size: 14px; font-weight: 800; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    #chartBox { width: 100%; height: 430px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+
+    .signal-box {
+      background: #0A101C;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .tag-buy { background: rgba(16, 185, 129, 0.2); color: var(--green); }
+    .tag-sell { background: rgba(239, 68, 68, 0.2); color: var(--red); }
+    .tag-flat { background: rgba(245, 158, 11, 0.2); color: var(--amber); }
+
+    .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .lvl {
+      background: #0A101C;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 8px;
+      text-align: center;
+    }
+    .lvl small { display: block; color: var(--muted); font-size: 10.5px; }
+    .lvl strong { font-family: monospace; font-size: 13.5px; }
+
+    .tp-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tp-item {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 9px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .status-note { font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="badge">PYTHON + LIGHTGBM</div>
+      <div>
+        <h1>Quantum Alpha Full-Stack Studio</h1>
+        <small id="apiStatus">Backend API: http://127.0.0.1:8000 • جاري الاتصال...</small>
+      </div>
+    </div>
+
+    <div class="controls">
+      <select id="symbolSel">
+        <option value="BTCUSDT" selected>BTC/USD (البيتكوين)</option>
+        <option value="ETHUSDT">ETH/USD (الإيثيريوم)</option>
+        <option value="SOLUSDT">SOL/USD (سولانا)</option>
+        <option value="XAUUSD">XAU/USD (الذهب)</option>
+        <option value="XAGUSD">XAG/USD (الفضة)</option>
+        <option value="NAS100">NAS100 (الناسداك)</option>
+        <option value="US30">US30 (الداو جونز)</option>
+        <option value="EURUSD">EUR/USD</option>
+        <option value="GBPUSD">GBP/USD</option>
+      </select>
+      <select id="tfSel">
+        <option value="1m" selected>M1</option>
+        <option value="5m">M5</option>
+        <option value="15m">M15</option>
+        <option value="1h">H1</option>
+        <option value="4h">H4</option>
+        <option value="1d">D1</option>
+      </select>
+      <select id="modeSel">
+        <option value="ACTIVE" selected>⚡ ثقة نشطة (≥ 44%)</option>
+        <option value="STRICT">🎯 ثقة صارمة (≥ 56%)</option>
+      </select>
+      <input type="number" id="lotInp" value="0.01" min="0.01" max="50" step="0.01" title="حجم اللوت" />
+      <button class="primary" onclick="fetchAnalysis()">🔄 تحليل واختبار خلفي</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="kpi-grid">
+      <div class="kpi"><small>السعر الحالي (Latest Price)</small><strong id="kpiPrice" style="color:var(--cyan);">---</strong></div>
+      <div class="kpi"><small>دقة التحقق LightGBM</small><strong id="kpiAcc" style="color:var(--green);">---</strong></div>
+      <div class="kpi"><small>نسبة نجاح Backtest</small><strong id="kpiWinRate" style="color:var(--green);">---</strong></div>
+      <div class="kpi"><small>صفقات Backtest</small><strong id="kpiTrades">---</strong></div>
+      <div class="kpi"><small>صافي عائد Backtest</small><strong id="kpiPnL" style="color:var(--cyan);">---</strong></div>
+      <div class="kpi"><small>أقصى تراجع (Max DD)</small><strong id="kpiDD" style="color:var(--red);">---</strong></div>
+    </div>
+
+    <div class="main-grid">
+      <div class="card">
+        <div class="card-title">
+          <span id="chartTitle">شارت تفاعلي حقيقي (TradingView Lightweight Charts)</span>
+          <span id="feedBadge" style="font-family:monospace;font-size:11px;color:var(--cyan);">---</span>
+        </div>
+        <div id="chartBox"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>⚡ إشارة LightGBM والأهداف</span>
+          <span id="topFeatBadge" style="font-family:monospace;font-size:11px;color:#DDD6FE;">---</span>
+        </div>
+
+        <div class="signal-box">
+          <div class="tag tag-flat" id="sigTag">FLAT / مراقبة</div>
+          <div id="probText" style="font-family:monospace;font-size:12px;color:var(--muted);">BUY: 0% • FLAT: 0% • SELL: 0%</div>
+        </div>
+
+        <div class="levels-grid">
+          <div class="lvl"><small>الدخول (Entry)</small><strong id="lvlEntry" style="color:var(--cyan);">---</strong></div>
+          <div class="lvl"><small>وقف الخسارة (SL)</small><strong id="lvlSL" style="color:var(--red);">---</strong></div>
+        </div>
+
+        <div class="tp-list" id="tpGrid">
+          <div class="tp-item"><span>TP1</span><strong id="tp1Val">---</strong></div>
+          <div class="tp-item"><span>TP2</span><strong id="tp2Val">---</strong></div>
+          <div class="tp-item"><span>TP3</span><strong id="tp3Val">---</strong></div>
+          <div class="tp-item"><span>TP4</span><strong id="tp4Val">---</strong></div>
+        </div>
+
+        <div class="status-note" id="noteText">
+          يتم تدريب نموذج LightGBM في السيرفر على بيانات الشموع التاريخية واختبار الصفقات بأسلوب Walk-Forward Backtest لتجنب التسرب المستقبلي.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+    let chart = null;
+    let candleSeries = null;
+
+    function initChart() {
+      const box = document.getElementById("chartBox");
+      box.innerHTML = "";
+      chart = LightweightCharts.createChart(box, {
+        width: box.clientWidth,
+        height: 430,
+        layout: { background: { color: "#0A101C" }, textColor: "#E2E8F0" },
+        grid: { vertLines: { color: "#172236" }, horzLines: { color: "#172236" } },
+        rightPriceScale: { borderColor: "#25344D" },
+        timeScale: { borderColor: "#25344D", timeVisible: true },
+      });
+      candleSeries = chart.addCandlestickSeries({
+        upColor: "#10B981",
+        downColor: "#EF4444",
+        borderUpColor: "#10B981",
+        borderDownColor: "#EF4444",
+        wickUpColor: "#10B981",
+        wickDownColor: "#EF4444",
+      });
+    }
+
+    async function fetchAnalysis() {
+      const symbol = document.getElementById("symbolSel").value;
+      const timeframe = document.getElementById("tfSel").value;
+      const mode = document.getElementById("modeSel").value;
+      const lot = Math.max(0.01, parseFloat(document.getElementById("lotInp").value) || 0.01);
+
+      const url = `${API_BASE}/api/analyze?symbol=${symbol}&timeframe=${timeframe}&mode=${mode}&lot=${lot}&limit=500`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+
+        document.getElementById("apiStatus").textContent = `Backend API: ${API_BASE} • متصل ✅`;
+        document.getElementById("feedBadge").textContent = `${data.symbol} [${data.timeframe.toUpperCase()}] • ${data.data_source}`;
+        document.getElementById("kpiPrice").textContent = data.latest_price.toFixed(data.decimals);
+        document.getElementById("kpiAcc").textContent = `${data.ai.train_accuracy}%`;
+        document.getElementById("kpiWinRate").textContent = `${data.backtest.win_rate}%`;
+        document.getElementById("kpiTrades").textContent = `${data.backtest.total_trades} (${data.backtest.wins}W / ${data.backtest.losses}L)`;
+
+        const pnl = data.backtest.net_pnl_usd;
+        const pnlEl = document.getElementById("kpiPnL");
+        pnlEl.textContent = `${pnl >= 0 ? "+" : "-"}$${Math.abs(pnl).toFixed(2)}`;
+        pnlEl.style.color = pnl >= 0 ? "#10B981" : "#EF4444";
+        document.getElementById("kpiDD").textContent = `-$${Math.abs(data.backtest.max_drawdown_usd).toFixed(2)}`;
+
+        document.getElementById("topFeatBadge").textContent = `Top Feature: ${data.ai.top_feature}`;
+        document.getElementById("probText").textContent =
+          `BUY: ${(data.ai.buy_prob * 100).toFixed(1)}% • FLAT: ${(data.ai.flat_prob * 100).toFixed(1)}% • SELL: ${(data.ai.sell_prob * 100).toFixed(1)}%`;
+
+        const tag = document.getElementById("sigTag");
+        if (data.trade_setup) {
+          const isBuy = data.trade_setup.direction === "BUY";
+          tag.className = `tag ${isBuy ? "tag-buy" : "tag-sell"}`;
+          tag.textContent = isBuy ? `🚀 إشارة شراء (BUY) • Lot ${lot.toFixed(2)}` : `🔻 إشارة بيع (SELL) • Lot ${lot.toFixed(2)}`;
+          document.getElementById("lvlEntry").textContent = data.trade_setup.entry.toFixed(data.decimals);
+          document.getElementById("lvlSL").textContent = `${data.trade_setup.sl.toFixed(data.decimals)} (-$${data.trade_setup.sl_risk_usd.toFixed(2)})`;
+          data.trade_setup.tps.forEach((tpPrice, idx) => {
+            const usd = data.trade_setup.tp_profits_usd[idx] || 0;
+            document.getElementById(`tp${idx + 1}Val`).textContent = `${tpPrice.toFixed(data.decimals)} (+$${usd.toFixed(2)})`;
+          });
+        } else {
+          tag.className = "tag tag-flat";
+          tag.textContent = "⏳ تذبذب / بانتظار تأكيد أعلى";
+          document.getElementById("lvlEntry").textContent = "---";
+          document.getElementById("lvlSL").textContent = "---";
+          for (let i = 1; i <= 4; i++) document.getElementById(`tp${i}Val`).textContent = "---";
+        }
+
+        if (!chart) initChart();
+        const formattedCandles = (data.candles || []).map(c => ({
+          time: Math.floor(c.time / 1000),
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        }));
+        candleSeries.setData(formattedCandles);
+      } catch (err) {
+        document.getElementById("apiStatus").textContent =
+          `Backend API: ${API_BASE} • غير شغال — شغّل uvicorn أولاً من مجلد backend`;
+      }
+    }
+
+    window.addEventListener("resize", () => {
+      if (chart) {
+        const box = document.getElementById("chartBox");
+        chart.applyOptions({ width: box.clientWidth });
+      }
+    });
+
+    ["symbolSel", "tfSel", "modeSel", "lotInp"].forEach(id => {
+      document.getElementById(id).addEventListener("change", fetchAnalysis);
+    });
+
+    initChart();
+    fetchAnalysis();
+  </script>
+</body>
+</html>
+```[cite: 7]
+[cite: 5, 7].
